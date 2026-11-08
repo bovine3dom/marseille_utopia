@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saint-Charles · walking times from voie F</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+body { margin:0; font:14px/1.45 system-ui,sans-serif; color:#253645 }
+#map { height:100vh; height:100dvh }
+#panel { position:absolute; top:16px; right:16px; z-index:1000; padding:14px 16px;
+  box-sizing:border-box; width:min(340px,calc(100vw - 88px)); background:#fff;
+  border:1px solid #d7dde3; border-radius:4px; box-shadow:0 2px 12px #17202b14 }
+#panel p { margin:0 0 12px; color:#000; font-size:13px; line-height:1.5 }
+#modes { display:flex; gap:12px; border-bottom:1px solid #e4e7eb }
+button { flex:1; margin-bottom:-1px; padding:8px 4px; border:0; border-bottom:2px solid transparent;
+  background:transparent; color:#69727d; font:inherit; cursor:pointer }
+button:hover, button:focus-visible { color:#000 }
+button[aria-pressed="true"] { border-bottom-color:#000; color:#000; font-weight:600 }
+button:focus-visible { outline:2px solid #000; outline-offset:2px }
+#legend { display:block; width:100%; margin-top:12px; overflow:visible }
+#legend line { stroke:#a2abb5 }
+#legend text { font:12px system-ui; font-variant-numeric:tabular-nums; fill:#505c68 }
+@media (max-width:520px) {
+  #panel { top:auto; right:12px; bottom:40px; left:12px; width:auto; padding:12px 14px }
+}
+</style>
+<div id="map"></div>
+<div id="panel">
+<p>Walking time from Voie F at Marseille St Charles with the subway...</p>
+<div id="modes" role="group" aria-label="Underpass">
+<button data-mode="closed_s" aria-pressed="false">Closed</button>
+<button data-mode="open_s" aria-pressed="true">Open</button>
+<button data-mode="saved_s" aria-pressed="false">Time saved</button>
+</div>
+<svg id="legend" viewBox="0 0 320 45" role="img" aria-label="Time in minutes"></svg>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import {interpolateSpectral} from 'https://cdn.jsdelivr.net/npm/d3-scale-chromatic@3.1.0/+esm';
+const data = await (await fetch('./network.geojson')).json();
+const map = L.map('map', {maxZoom:21});
+map.fitBounds(data.features.flatMap(f => f.geometry.coordinates.map(([lon,lat]) => [lat,lon])), {padding:[30,30]});
+map.attributionControl.setPrefix(false);
+map.attributionControl.addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>');
+if (['http:', 'https:'].includes(location.protocol)) {
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxNativeZoom:19, maxZoom:21, noWrap:true, opacity:0.6,
+    updateWhenIdle:true, updateWhenZooming:false, keepBuffer:0,
+    referrerPolicy:'strict-origin-when-cross-origin'
+  }).addTo(map);
+}
+L.control.scale({imperial:false}).addTo(map);
+let mode = 'open_s';
+const buttons = document.querySelectorAll('#modes button');
+const maximum = values => Math.max(60, Math.ceil(Math.max(...values) / 60) * 60);
+const maxTime = maximum(data.features.flatMap(f => [f.properties.closed_s, f.properties.open_s]));
+const maxSaving = maximum(data.features.map(f => f.properties.saved_s));
+const color = (value, limit) => interpolateSpectral(mode === 'saved_s' ? value/limit : 1-value/limit);
+const duration = value => Math.floor(value/60) + ':' + String(value%60).padStart(2,'0');
+const layer = L.geoJSON(null, {
+  filter:f => Number.isFinite(f.properties[mode]),
+  style:f => ({color:color(f.properties[mode], mode === 'saved_s' ? maxSaving : maxTime),
+    weight:5, opacity:0.95, dashArray:f.properties.underpass ? '5 4' : null}),
+  onEachFeature:(f,l) => l.bindTooltip(duration(f.properties[mode]))
+}).addTo(map);
+const source = L.polyline(data.origin.map(([lon,lat]) => [lat,lon]), {color:'#111', weight:8})
+  .addTo(map).bindTooltip('Voie F · 0:00');
+function render() {
+  buttons.forEach(button => button.setAttribute('aria-pressed', button.dataset.mode === mode));
+  layer.clearLayers().addData(data);
+  source.bringToFront();
+  const limit = mode === 'saved_s' ? maxSaving : maxTime;
+  const stops = Array.from({length:33}, (_,i) =>
+    `<stop offset="${i/32}" stop-color="${color(i/32,1)}"/>`).join('');
+  const ticks = Array.from({length:limit/60+1}, (_,minute) => {
+    const x = minute*60/limit*288, last = minute*60 === limit;
+    return `<line x1="${x}" x2="${x}" y1="16" y2="24"/>
+      <text x="${x}" y="38" text-anchor="${minute === 0 ? 'start' : last ? 'end' : 'middle'}">${minute}</text>`;
+  }).join('');
+  document.getElementById('legend').innerHTML = `<defs><linearGradient id="spectral">${stops}</linearGradient></defs>
+    <rect width="288" height="16" fill="url(#spectral)"/>${ticks}<text x="320" y="38" text-anchor="end">min</text>`;
+}
+buttons.forEach(button => {
+  button.onclick = () => { mode = button.dataset.mode; render(); };
+});
+render();
+</script>
+</html>
