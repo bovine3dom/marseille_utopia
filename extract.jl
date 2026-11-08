@@ -112,7 +112,7 @@ for e in edges
             geometry=(type="LineString", coordinates=points)))
     end
 end
-path = joinpath(@__DIR__, "www", "network.geojson")
+path = joinpath(@__DIR__, "docs", "network.geojson")
 mkpath(dirname(path))
 write(path, JSON3.write((type="FeatureCollection", features=features,
     origin=[coords[n] for n in origin], attribution=osm.osm3s.copyright)))

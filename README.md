@@ -4,8 +4,8 @@ Calculate walking times from the voie F segment `[3182917809, 10852831327]` appr
 Both endpoints and every point on this segment have zero travel time.
 
 - `extract.jl`: fetches OSM data and calculates walking times.
-- `www/index.html`: static map.
-- `www/network.geojson`: generated WGS84 sections and times.
+- `docs/index.html`: static map.
+- `docs/network.geojson`: generated WGS84 sections and times.
 - `data/saint_charles.json` and `data/station.json`: cached OSM data.
 
 To update the map data:
@@ -14,8 +14,6 @@ To update the map data:
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
 julia --project=. extract.jl
 ```
-
-Commit `www/network.geojson` and push to publish the new data.
 
 Walking speed is 1.3 m/s, with an extra 10 seconds per mapped stairway.
 
