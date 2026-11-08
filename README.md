@@ -1,5 +1,7 @@
 # Marseille Saint-Charles inter-platform walking times
 
+[View the map live here](https://o.blanthorn.com/marseille_utopia/)
+
 Calculate walking times from the voie F segment `[3182917809, 10852831327]` approach to the underpass.
 Both endpoints and every point on this segment have zero travel time.
 
